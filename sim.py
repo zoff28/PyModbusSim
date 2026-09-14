@@ -1561,7 +1561,7 @@ def cli():
                     parts[1]
                 )
 
-            elif parts[0] in ("listr", "listrtn"):
+            elif parts[0] in ("listrtn"):
 
                 if not routines:
 
@@ -1577,7 +1577,7 @@ def cli():
                             f" - {name}"
                         )
 
-            elif parts[0] in ("showr", "showrtn"):
+            elif parts[0] in ("showrtn"):
 
                 name = parts[1]
 
