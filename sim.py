@@ -88,6 +88,9 @@ class LoggingDataBlock(ModbusSequentialDataBlock):
 
 DEFAULT_UNIT_ID = 1
 DEFAULT_PORT = 502
+units = {}
+context = None
+store = None
 
 def get_config():
 
@@ -124,10 +127,12 @@ def build_units(unit_ids):
     global UNIT_IDS
     global units
     global current_unit
+    global context
+    global store
 
     UNIT_IDS = unit_ids
 
-    units = {}
+    units.clear()
 
     for unit_id in UNIT_IDS:
 
@@ -160,6 +165,14 @@ def build_units(unit_ids):
         )
 
     current_unit = UNIT_IDS[0]
+    store = units[current_unit]
+
+    if context is None:
+
+        context = ModbusServerContext(
+            slaves=units,
+            single=False
+        )
 
 UNIT_IDS, PORT = get_config()
 build_units(UNIT_IDS)
@@ -518,29 +531,6 @@ counters = {}
 clocks = {}
 routines = {}
 routine_running = {}
-
-# ============================================================
-# MODBUS STORE
-# ============================================================
-
-units = {}
-
-for unit_id in UNIT_IDS:
-
-    units[unit_id] = ModbusSlaveContext(
-        co=LoggingDataBlock("CO", 0, [0] * 65535),
-        di=LoggingDataBlock("DI", 0, [0] * 65535),
-        hr=LoggingDataBlock("HR", 0, [0] * 65535),
-        ir=LoggingDataBlock("IR", 0, [0] * 65535),
-        zero_mode=True
-    )
-
-context = ModbusServerContext(
-    slaves=units,
-    single=False
-)
-
-store = units[UNIT_IDS[0]]
 
 # ============================================================
 # SERVER
@@ -1385,6 +1375,12 @@ def cli():
                 f"[{current_unit}]> "
             ).strip()
 
+            if not command:
+
+                continue
+
+            parts = command.split()
+
             if parts[0] == "setb":
 
                 set_bool(
@@ -1565,7 +1561,7 @@ def cli():
                     parts[1]
                 )
 
-            elif parts[0] == "listrtn":
+            elif parts[0] in ("listr", "listrtn"):
 
                 if not routines:
 
@@ -1581,7 +1577,7 @@ def cli():
                             f" - {name}"
                         )
 
-            elif parts[0] == "showrtn":
+            elif parts[0] in ("showr", "showrtn"):
 
                 name = parts[1]
 
