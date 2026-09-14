@@ -88,6 +88,7 @@ class LoggingDataBlock(ModbusSequentialDataBlock):
 
 DEFAULT_UNIT_ID = 1
 DEFAULT_PORT = 502
+DEFAULT_SAVE_FILENAME = "sim_config.json"
 
 def get_config():
 
@@ -1369,7 +1370,7 @@ def cli():
     print("unit <id>")
     print("units")
     print("")
-    print("save <filename>")
+    print(f"save [filename] (default: {DEFAULT_SAVE_FILENAME})")
     print("load <filename>")
     print("")
     print("status")
@@ -1384,6 +1385,12 @@ def cli():
             command = input(
                 f"[{current_unit}]> "
             ).strip()
+
+            if not command:
+
+                continue
+
+            parts = command.split()
 
             if parts[0] == "setb":
 
@@ -1487,11 +1494,23 @@ def cli():
                 
             elif parts[0] == "save":
 
-                save_config(parts[1])
+                filename = (
+                    parts[1]
+                    if len(parts) >= 2
+                    else DEFAULT_SAVE_FILENAME
+                )
+
+                save_config(filename)
 
             elif parts[0] == "load":
 
-                load_config(parts[1])
+                if len(parts) != 2:
+
+                    print("Usage: load <filename>")
+
+                else:
+
+                    load_config(parts[1])
                 
             elif parts[0] == "clear":
 
