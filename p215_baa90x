@@ -38,9 +38,10 @@
         }
     },
     "counters": {
-        "1:8008": {
+        "1:hr:8008": {
             "running": true,
             "unit": 1,
+            "type": 3,
             "addr": 8008,
             "min": 1,
             "max": 5,
