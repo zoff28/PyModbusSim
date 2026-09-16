@@ -410,94 +410,51 @@ def load_config(filename):
                 [value]
             )
 
-    #
     # Restore counters
-    #
-
     if "counters" in data:
-
-        for key, cfg in data[
-            "counters"
-        ].items():
-
-            #
-            # New format
-            #
-
-            if (
-                isinstance(cfg, dict)
-                and "unit" in cfg
-                and "addr" in cfg
-            ):
+        for key, cfg in data["counters"].items():
+            if isinstance(cfg, dict) and "unit" in cfg and "addr" in cfg:
+                # one-time legacy migration default
+                if "type" not in cfg:
+                    cfg["type"] = "hr"
+                if "running" not in cfg:
+                    cfg["running"] = True
 
                 counters[key] = cfg
-
                 threading.Thread(
                     target=counter_worker,
                     args=(key,),
                     daemon=True
                 ).start()
 
-            #
-            # Old format
-            #
-
+            # old format (can remove later if you want)
             elif isinstance(cfg, dict):
+                start_counter("hr", int(key), cfg["min"], cfg["max"], cfg["period"])
 
-                start_counter(
-                    "hr",
-                    int(key),
-                    cfg["min"],
-                    cfg["max"],
-                    cfg["period"]
-                )
+        print(f"Loaded {len(data['counters'])} counters")
 
-        print(
-            f"Loaded {len(data['counters'])} counters"
-        )
-
-    #
     # Restore clocks
-    #
-
     if "clocks" in data:
-
-        for key, cfg in data[
-            "clocks"
-        ].items():
-
-            #
-            # New format
-            #
-
-            if (
-                isinstance(cfg, dict)
-                and "unit" in cfg
-                and "addr" in cfg
-            ):
+        for key, cfg in data["clocks"].items():
+            if isinstance(cfg, dict) and "unit" in cfg and "addr" in cfg:
+                # one-time legacy migration default
+                if "type" not in cfg:
+                    cfg["type"] = "hr"
+                if "running" not in cfg:
+                    cfg["running"] = True
 
                 clocks[key] = cfg
-
                 threading.Thread(
                     target=clock_worker,
                     args=(key,),
                     daemon=True
                 ).start()
 
-            #
-            # Old format
-            #
-
+            # old format (can remove later if you want)
             elif cfg:
+                start_clock("hr", int(key))
 
-                start_clock(
-                    "hr",
-                    int(key)
-                )
-
-        print(
-            f"Loaded {len(data['clocks'])} clocks"
-        )
+        print(f"Loaded {len(data['clocks'])} clocks")
 
     #
     # Restore routines
