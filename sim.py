@@ -710,6 +710,111 @@ def set_word(
         f"{reg_type.upper()}{addr} = {value}"
     )
 
+def set_bit(reg_type, addr, bit_num, bit_value):
+
+    reg_type = reg_type.lower()
+
+    if reg_type not in REG_TYPES:
+        print("Type must be 'hr' or 'ir'")
+        return
+
+    if not 0 <= bit_num < 16:
+        print("Bit number must be between 0 and 15")
+        return
+
+    if bit_value not in (0, 1):
+        print("Bit value must be 0 or 1")
+        return
+
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+    value = units[current_unit].getValues(
+        REG_TYPES[reg_type],
+        index,
+        count=1
+    )[0]
+    mask = 1 << bit_num
+    value = value | mask if bit_value else value & ~mask
+
+    units[current_unit].setValues(
+        REG_TYPES[reg_type],
+        index,
+        [value]
+    )
+
+    print(f"{reg_type.upper()}{addr} bit {bit_num} = {bit_value}")
+
+def show_bit(reg_type, addr, bit_num):
+
+    reg_type = reg_type.lower()
+
+    if reg_type not in REG_TYPES:
+        print("Type must be 'hr' or 'ir'")
+        return
+
+    if not 0 <= bit_num < 16:
+        print("Bit number must be between 0 and 15")
+        return
+
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+    value = units[current_unit].getValues(
+        REG_TYPES[reg_type],
+        index,
+        count=1
+    )[0]
+    bit_value = (value >> bit_num) & 1
+
+    print(f"{reg_type.upper()}{addr} bit {bit_num} = {bit_value}")
+
+def set_bits(reg_type, addr, binary_string):
+
+    reg_type = reg_type.lower()
+
+    if reg_type not in REG_TYPES:
+        print("Type must be 'hr' or 'ir'")
+        return
+
+    if (
+        not binary_string
+        or len(binary_string) > 16
+        or any(bit not in "01" for bit in binary_string)
+    ):
+        print("Binary string must contain 1 to 16 bits")
+        return
+
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+    value = units[current_unit].getValues(
+        REG_TYPES[reg_type],
+        index,
+        count=1
+    )[0]
+    mask = (1 << len(binary_string)) - 1
+    value = (value & ~mask) | int(binary_string, 2)
+
+    units[current_unit].setValues(
+        REG_TYPES[reg_type],
+        index,
+        [value]
+    )
+
+    print(f"{reg_type.upper()}{addr} = {value}")
+
+def show_bits(reg_type, addr):
+
+    reg_type = reg_type.lower()
+
+    if reg_type not in REG_TYPES:
+        print("Type must be 'hr' or 'ir'")
+        return
+
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+    value = units[current_unit].getValues(
+        REG_TYPES[reg_type],
+        index,
+        count=1
+    )[0]
+
+    print(f"{reg_type.upper()}{addr} = {value & 0xFFFF:016b}")
+
 def clear_registers():
 
     for addr in range(65535):
@@ -1333,6 +1438,11 @@ def cli():
     print("setb <co|di> <addr> <0|1>")
     print("showb <co|di> <addr>")
     print("")
+    print("setbit <hr|ir> <addr> <bit_num> <0|1>")
+    print("showbit <hr|ir> <addr> <bit_num>")
+    print("setbits <hr|ir> <addr> <binary_string>")
+    print("showbits <hr|ir> <addr>")
+    print("")
     print("setw <hr|ir> <addr> <value>")
     print("setf <hr|ir> <addr> <float>")
     print("setd <hr|ir> <addr> <value>")
@@ -1404,7 +1514,39 @@ def cli():
                     parts[1],
                     int(parts[2])
                 )
-                
+
+            elif parts[0] == "setbit":
+
+                set_bit(
+                    parts[1],
+                    int(parts[2]),
+                    int(parts[3]),
+                    int(parts[4])
+                )
+
+            elif parts[0] == "showbit":
+
+                show_bit(
+                    parts[1],
+                    int(parts[2]),
+                    int(parts[3])
+                )
+
+            elif parts[0] == "setbits":
+
+                set_bits(
+                    parts[1],
+                    int(parts[2]),
+                    parts[3]
+                )
+
+            elif parts[0] == "showbits":
+
+                show_bits(
+                    parts[1],
+                    int(parts[2])
+                )
+                 
             elif parts[0] == "setw":
 
                 set_word(
