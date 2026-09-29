@@ -1546,7 +1546,7 @@ def cli():
                     parts[1],
                     int(parts[2])
                 )
-                 
+
             elif parts[0] == "setw":
 
                 set_word(
