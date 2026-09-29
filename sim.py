@@ -217,6 +217,8 @@ def save_config(filename):
         "ir": 4
     }
 
+    max_addr = 65535 if ZERO_MODE else 65534
+
     for unit_id in UNIT_IDS:
 
         unit_data = {}
@@ -225,7 +227,7 @@ def save_config(filename):
 
             registers = {}
 
-            for addr in range(65535):
+            for addr in range(max_addr):
 
                 value = units[unit_id].getValues(
                     modbus_type,
@@ -817,7 +819,9 @@ def show_bits(reg_type, addr):
 
 def clear_registers():
 
-    for addr in range(65535):
+    max_addr = 65535 if ZERO_MODE else 65534
+
+    for addr in range(max_addr):
 
         store.setValues(
             3,
@@ -1030,17 +1034,23 @@ def start_counter(
         daemon=True
     ).start()
 
-def stop_counter(addr):
-
-    key = f"{current_unit}:{reg_type}:{addr}"
+def stop_counter_by_key(key):
 
     if key in counters:
 
         counters[key]["running"] = False
 
+def stop_counter(reg_type, addr):
+
+    key = f"{current_unit}:{reg_type}:{addr}"
+
+    if key in counters:
+
+        stop_counter_by_key(key)
+
         print(
             f"Counter stopped on "
-            f"Unit {current_unit} HR{addr}"
+            f"Unit {current_unit} {reg_type.upper()}{addr}"
         )
 
 def stop_all_counters():
@@ -1657,7 +1667,8 @@ def cli():
             elif parts[0] == "stopc":
 
                 stop_counter(
-                    int(parts[1])
+                    parts[1],
+                    int(parts[2])
                 )
                 
             elif parts[0] == "stopallc":
@@ -1805,8 +1816,8 @@ def cli():
 
                 running = False
 
-                for addr in list(counters.keys()):
-                    stop_counter(addr)
+                for key in list(counters.keys()):
+                    stop_counter_by_key(key)
 
                 break
 
