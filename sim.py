@@ -88,9 +88,18 @@ class LoggingDataBlock(ModbusSequentialDataBlock):
 
 DEFAULT_UNIT_ID = 1
 DEFAULT_PORT = 502
+DEFAULT_ZERO_MODE = False
 units = {}
 context = None
 store = None
+
+def apply_zero_mode_offset(address, zero_mode_enabled):
+
+    if zero_mode_enabled:
+
+        return address
+
+    return address - 1
 
 def get_config():
 
@@ -104,11 +113,17 @@ def get_config():
             else DEFAULT_PORT
         )
 
-        return unit_id, port
+        zero_mode = (
+            sys.argv[3].strip().lower() == "true"
+            if len(sys.argv) >= 4
+            else DEFAULT_ZERO_MODE
+        )
+
+        return [unit_id], port, zero_mode
 
     unit_id_input = input(
-        "Unit IDs "
-    ).strip() or DEFAULT_UNIT_ID
+        f"Unit IDs [{DEFAULT_UNIT_ID}]: "
+    ).strip() or str(DEFAULT_UNIT_ID)
 
     unit_ids = [
         int(x.strip())
@@ -120,17 +135,25 @@ def get_config():
         or DEFAULT_PORT
     )
 
-    return unit_ids, port
+    zero_mode_input = input(
+        f"Zero Mode (True/False) [{DEFAULT_ZERO_MODE}]: "
+    ).strip().lower() or str(DEFAULT_ZERO_MODE).lower()
 
-def build_units(unit_ids):
+    zero_mode = zero_mode_input == "true"
+
+    return unit_ids, port, zero_mode
+
+def build_units(unit_ids, zero_mode=DEFAULT_ZERO_MODE):
 
     global UNIT_IDS
     global units
     global current_unit
     global context
     global store
+    global ZERO_MODE
 
     UNIT_IDS = unit_ids
+    ZERO_MODE = zero_mode
 
     units.clear()
 
@@ -161,7 +184,7 @@ def build_units(unit_ids):
                 [0] * 65535
             ),
 
-            zero_mode=True
+            zero_mode=zero_mode
         )
 
     current_unit = UNIT_IDS[0]
@@ -174,8 +197,8 @@ def build_units(unit_ids):
             single=False
         )
 
-UNIT_IDS, PORT = get_config()
-build_units(UNIT_IDS)
+UNIT_IDS, PORT, ZERO_MODE = get_config()
+build_units(UNIT_IDS, ZERO_MODE)
 current_unit = UNIT_IDS[0]
 
 def save_config(filename):
@@ -252,7 +275,8 @@ def load_config(filename):
     if "unit_ids" in data:
 
         build_units(
-            data["unit_ids"]
+            data["unit_ids"],
+            ZERO_MODE
         )
 
         print(
@@ -502,6 +526,7 @@ def print_banner():
     print(f"Unit IDs : ")
     print(f"{', '.join(map(str, UNIT_IDS))}")
     print(f"Port          : {PORT}")
+    print(f"Zero Mode     : {ZERO_MODE}")
     print(f"Read Logging  : {log_reads}")
     print(f"Write Logging : {log_writes}")
     print("======================================")
@@ -570,9 +595,11 @@ def set_bool(obj_type, addr, value):
 
         return
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     units[current_unit].setValues(
         BOOL_TYPES[obj_type],
-        addr,
+        index,
         [int(value)]
     )
 
@@ -592,9 +619,11 @@ def show_bool(obj_type, addr):
 
         return
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     value = units[current_unit].getValues(
         BOOL_TYPES[obj_type],
-        addr,
+        index,
         count=1
     )[0]
 
@@ -626,9 +655,11 @@ def show_word(
 
         return
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     value = units[current_unit].getValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         count=1
     )[0]
 
@@ -638,9 +669,11 @@ def show_word(
 
 def show_range(start, end):
 
+    index = apply_zero_mode_offset(start, ZERO_MODE)
+
     values = units[current_unit].getValues(
         3,
-        start,
+        index,
         count=(end - start + 1)
     )
 
@@ -665,9 +698,11 @@ def set_word(
 
         return
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     units[current_unit].setValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         [value]
     )
 
@@ -712,9 +747,11 @@ def set_float(
         struct.pack(">f", float(value))
     )
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     units[current_unit].setValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         list(words)
     )
 
@@ -737,9 +774,11 @@ def show_float(
 
         return
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     words = units[current_unit].getValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         count=2
     )
 
@@ -775,9 +814,11 @@ def set_dint(
     hi = (value >> 16) & 0xFFFF
     lo = value & 0xFFFF
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     units[current_unit].setValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         [hi, lo]
     )
 
@@ -801,9 +842,11 @@ def show_dint(
 
         return
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     words = units[current_unit].getValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         count=2
     )
 
@@ -929,9 +972,11 @@ def set_hex(
 
     value = int(value, 16)
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     units[current_unit].setValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         [value]
     )
 
@@ -955,9 +1000,11 @@ def show_hex(
 
         return
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     value = units[current_unit].getValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         count=1
     )[0]
 
@@ -987,9 +1034,11 @@ def set_dhex(
     hi = (value >> 16) & 0xFFFF
     lo = value & 0xFFFF
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     units[current_unit].setValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         [hi, lo]
     )
 
@@ -1014,9 +1063,11 @@ def show_dhex(
 
         return
 
+    index = apply_zero_mode_offset(addr, ZERO_MODE)
+
     words = units[current_unit].getValues(
         REG_TYPES[reg_type],
-        addr,
+        index,
         count=2
     )
 
@@ -1258,6 +1309,7 @@ def show_info():
     print("----")
     print(f"Unit ID      : {UNIT_IDS}")
     print(f"Port         : {PORT}")
+    print(f"Zero Mode    : {ZERO_MODE}")
     print(f"Read Logging : {log_reads}")
     print(f"Write Logging: {log_writes}")
     print(f"Counters     : {len(counters)}")
